@@ -27,3 +27,9 @@
 *.exe
 *.out
 *.app
+.pioenvs
+.piolibdeps
+
+# Python
+__pycache__
+.pydevproject

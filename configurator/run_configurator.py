@@ -75,17 +75,15 @@ Set the internal nonce counter to all 0s.
             print("Usage: setid PORT")
 
     def do_set_key(self, args):
-        """Usage: set_key HEX_KEY
-Set the AES128 key used secure communication with server.
+        """Usage: set_key
+Generate and set a random HMAC key used for uthentication with the server.
 """
         try:
-            hex_key = args.split()[0]
-            self.configurator.set_key(hex_key)
+            key = self.configurator.set_key()
+            print(key)
             print("OK")
         except ConfiguratorException as e:
             print(str(e))
-        except IndexError:
-            print("Usage: set_key HEX_KEY")
 
     def do_set_location(self, args):
         """Usage: set_location LOCATION
@@ -99,6 +97,32 @@ Set the LOCATION on the server where the chip will POST to.
             print(str(e))
         except IndexError:
             print("Usage: set_location LOCATION")
+            
+    def do_set_ssid(self, args):
+        """Usage: set_ssid SSID
+Set the SSID of the WIFi this chip will connect to.
+"""
+        try:
+            ssid = args.split()[0]
+            self.configurator.set_ssid(ssid)
+            print("OK")
+        except ConfiguratorException as e:
+            print(str(e))
+        except IndexError:
+            print("Usage: set_ssid SSID")
+            
+    def do_set_password(self, args):
+        """Usage: set_password PASSWORD
+Set the PASSWORD of the WIFi this chip will connect to.
+"""
+        try:
+            passwd = args.split()[0]
+            self.configurator.set_password(passwd)
+            print("OK")
+        except ConfiguratorException as e:
+            print(str(e))
+        except IndexError:
+            print("Usage: set_password PASSWORD")
 
     def do_read_conf(self, args):
         """Usage: read_conf
@@ -111,9 +135,10 @@ Set the LOCATION on the server where the chip will POST to.
 * ID: {id}
 * IP: {ip}
 * Port: {port}
-* Nonce ctr: {nonce_ctr}
 * Key: {key}
-* Location {location}
+* Location: {location}
+* SSID: {ssid}
+* Password: {password}
 * Time: {time}""".format(**conf))
             print("OK")
         except ConfiguratorException as e:
@@ -146,6 +171,7 @@ Set correct configuration values in RTC chip
             print(str(e))
 
     def do_EOF(self, args):
+        print("")
         print("Bye.")
         return True
 

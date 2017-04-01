@@ -2,6 +2,8 @@ import binascii
 import time as tm
 from datetime import datetime, timezone, timedelta
 import serial as ps
+import os
+import base64
 
 OK = "OK"
 ERR = "ERR"
@@ -23,9 +25,11 @@ SET_PORT_CMD = 'P'
 RESET_IV_CTR_CMD = 'I'
 SYNC_CMD = 'S'
 SET_LOCATION_CMD = 'L'
+SET_SSID_CMD = 'N'
+SET_PASSWD_CMD = '~'
 GET_CONF_CMD = 'V'
 
-EXPECTED_CONF_COUNT = 7
+EXPECTED_CONF_COUNT = 8
 
 
 class Configurator(object):
@@ -75,36 +79,38 @@ class Configurator(object):
             l = self._readln()
             raise ConfiguratorException("Set port failed: " + l)
 
-    def reset_nonce(self):
-        self._writeln(CMD_START_CHAR + RESET_IV_CTR_CMD + CMD_END_CHAR)
-        if self.wait_response() != OK:
-            l = self._readln()
-            raise ConfiguratorException("Nonce counter reset failed: " + l)
+    def set_key(self):
+        key = os.urandom(32)
 
-    def set_key(self, hex_key):
-        if len(hex_key) != 32:  # 16 bytes
-            raise ConfiguratorException("Invalid key size, expected 32 hex characters")
-        try:
-            _ = binascii.unhexlify(hex_key)
-        except binascii.Error as e:
-            raise ConfiguratorException("Invalid key: " + str(e))
-
-        self._writeln(CMD_START_CHAR + SET_KEY_CMD + hex_key + CMD_END_CHAR)
+        self.serial.write(
+            (CMD_START_CHAR + SET_KEY_CMD).encode() + 
+            key + 
+            (CMD_END_CHAR + LINE_END).encode())
         if self.wait_response() != OK:
             l = self._readln()
             raise ConfiguratorException("Set key failed: " + l)
+        return base64.b64encode(key)
 
     def set_location(self, location):
-        if ";" in location:
-            raise ConfiguratorException("Invalid character: ';'")
-        if "," in location:
-            raise ConfiguratorException("Invalid character: ','")
-        if len(location) > (256 - 32 - 1):  # check that it fits in 223
-            raise ConfiguratorException("Location too long. Must be 223 characters or less.")
-        self._writeln(CMD_START_CHAR + SET_LOCATION_CMD + location + CMD_END_CHAR)
+        self._str_check(location)
+        self._writeln(CMD_START_CHAR + SET_LOCATION_CMD + chr(len(location)) + location + CMD_END_CHAR)
         if self.wait_response() != OK:
             l = self._readln()
             raise ConfiguratorException("Set location failed: " + l)
+        
+    def set_ssid(self, ssid):
+        self._str_check(ssid)
+        self._writeln(CMD_START_CHAR + SET_SSID_CMD + chr(len(ssid)) + ssid + CMD_END_CHAR)
+        if self.wait_response() != OK:
+            l = self._readln()
+            raise ConfiguratorException("Set SSID failed: " + l)
+        
+    def set_password(self, passwd):
+        self._str_check(passwd)
+        self._writeln(CMD_START_CHAR + SET_PASSWD_CMD + chr(len(passwd)) + passwd + CMD_END_CHAR)
+        if self.wait_response() != OK:
+            l = self._readln()
+            raise ConfiguratorException("Set password failed: " + l)
 
     def read_conf(self):
         self._writeln(CMD_START_CHAR + GET_CONF_CMD + CMD_END_CHAR)
@@ -115,15 +121,18 @@ class Configurator(object):
         conf = self._readln().split(',')
         if len(conf) != EXPECTED_CONF_COUNT:
             raise ConfiguratorException("Read conf failed: unexpected conf parameters count")
-
+        
+        binkey = binascii.unhexlify(conf[3])
+        b64key = base64.b64encode(binkey)
         return {
             'id': conf[0],
             'ip': conf[1],
             'port': conf[2],
-            'key': conf[3],
-            'nonce_ctr': conf[4],
-            'location': conf[5],
-            'time': conf[6],
+            'key': b64key,
+            'location': conf[4],
+            'ssid': conf[5],
+            'password': conf[6],
+            'time': conf[7],
         }
 
     def set_rtc(self, offset=None):
@@ -183,6 +192,16 @@ class Configurator(object):
         if l.endswith("\n"):
             return l
         raise ConfiguratorException("Connection timed out!")
+    
+    def _str_check(self, s):
+        if ";" in s:
+            raise ConfiguratorException("Invalid character: ';'")
+        if "," in s:
+            raise ConfiguratorException("Invalid character: ','")
+        if "=" in s:
+            raise ConfiguratorException("Invalid character: '='")
+        if len(s) >= (32):
+            raise ConfiguratorException("Location too long. Must be 31 characters or less.")
 
 
 class ConfiguratorException(Exception):

@@ -5,31 +5,25 @@
 #define SD_NAME_LEN 10
 #define SD_VALUE_LEN 10
 
-struct sensorData {
-	char name[SD_NAME_LEN];
-	char value[SD_VALUE_LEN];
-};
-
 class Dyeus {
 public:
-	Dyeus();
-	virtual ~Dyeus();
+	void begin();
 
-	bool addSensorData(const char *name, const char *value);
-	bool addSensorData(const char *name, int value);
-	bool addSensorData(const char *name, double value);
+	bool addSensorDataS(const char *name, const char *value);
+	bool addSensorDataI(const char *name, int value);
+	bool addSensorDataD(const char *name, double value);
 	bool sendData();
 
 private:
+	bool appendTime();
 	bool authenticate();
-	bool connectToWiFi();
+	bool connectToServer();
 	bool sendDataToServer();
 	bool disconnectWiFi();
 
-	sensorData sd[10];
-	uint16_t sd_count;
 	char buffer[256];
-	uint8_t mac[32];
+	size_t buff_ptr;
+	uint8_t b64mac[44];
 };
 
 #endif /* __DYEUS_H__ */

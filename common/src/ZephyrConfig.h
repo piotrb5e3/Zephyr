@@ -35,8 +35,6 @@ public:
 
 	static bool getPort(uint16_t *port);
 
-	static bool getIV(uint8_t *iv);
-
 	static bool getHMACKey(uint8_t *binkey);
 
 	static bool getLocation(uint8_t *loc);
